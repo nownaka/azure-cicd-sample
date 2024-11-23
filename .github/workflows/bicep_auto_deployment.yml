@@ -1,0 +1,49 @@
+name: Azure Bicep Deployment.
+
+# トリガー
+on:
+  push:
+    branches:
+      - main
+
+  # 手動
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # タイムスタンプを生成
+      - name: Set timestamp
+        env:
+          TZ: "Asia/Tokyo"
+        run: echo "TIMESTAMP=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+
+      # チェックアウト
+      - name: Checkout to the branch
+        uses: actions/checkout@v4
+
+      # Azure ログイン
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # リソースデプロイ
+      - name: Deploy with Azure Bicep
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment group create \
+              --name Deploy_${{ env.TIMESTAMP }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_NAME }} \
+              --template-file main.bicep \
+              --parameters main.bicepparam
